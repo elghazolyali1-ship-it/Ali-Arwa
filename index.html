@@ -5592,27 +5592,56 @@ t-form__inputsbox_vertical-form t-form__inputsbox_inrow
                     });
                 }
 
-                // The quote/envelope card's title and verse are two separately
-                // positioned text boxes stacked on paper — the title's height
-                // changes with the language/font/line-wrapping, so the verse's
-                // top has to be recomputed from the title's *actual* rendered
-                // height instead of a hardcoded pixel guess (that guess is what
-                // caused the title and verse to overlap/collide before).
-                function layoutQuoteBlock() {
-                    var title = document.querySelector('#rec2442651013 .tn-elem[data-elem-id="1705235414679"]');
-                    var body = document.querySelector('#rec2442651013 .tn-elem[data-elem-id="1705235414678"]');
-                    if (!title || !body) { return; }
-                    var gap = 24;
-                    var target = title.offsetTop + title.offsetHeight + gap;
+                // Several spots on this page stack two absolutely-positioned text
+                // boxes (a heading directly above a paragraph/link), with the
+                // second box's "top" hardcoded assuming the first box stays on one
+                // line. Whenever the language/font swap makes the first box wrap
+                // to an extra line — Amiri vs Playfair, Cairo vs the default sans
+                // for a plain proper noun like "Aynur Düğün Salonu" — the second
+                // box's fixed top no longer clears it and the two collide. Instead
+                // of guessing per-language pixel values, recompute the second
+                // box's top from the first box's *actual* rendered height.
+                function stackBelow(topEl, bottomEl, gap) {
+                    if (!topEl || !bottomEl) { return; }
+                    var target = topEl.offsetTop + topEl.offsetHeight + gap;
                     // Tilda's own record engine (t396_init) re-applies its stored
-                    // "top" position on the verse element after we set ours (on
-                    // load, on resize, on font swap), which silently undid a plain
-                    // inline-style write. Only touch the DOM when our target
-                    // actually differs, so the MutationObserver below can safely
-                    // re-assert this every time Tilda stomps on it without looping.
-                    if (parseFloat(body.style.top) !== target) {
-                        body.style.top = target + 'px';
+                    // "top" position on these elements after our script runs (on
+                    // load, on resize, on font swap), which would otherwise silently
+                    // undo a plain inline-style write. Only touch the DOM when our
+                    // target actually differs, so the MutationObserver below can
+                    // safely re-assert this every time Tilda stomps on it without
+                    // looping forever.
+                    if (parseFloat(bottomEl.style.top) !== target) {
+                        bottomEl.style.top = target + 'px';
                     }
+                }
+
+                function watchStack(topEl, bottomEl, apply) {
+                    if (!topEl || !bottomEl) { return; }
+                    if (window.ResizeObserver) {
+                        new ResizeObserver(apply).observe(topEl);
+                    }
+                    if (window.MutationObserver) {
+                        var mo = new MutationObserver(apply);
+                        mo.observe(bottomEl, { attributes: true, attributeFilter: ['style'] });
+                        mo.observe(topEl, { attributes: true, attributeFilter: ['style'] });
+                    }
+                }
+
+                function layoutQuoteBlock() {
+                    stackBelow(
+                        document.querySelector('#rec2442651013 .tn-elem[data-elem-id="1705235414679"]'),
+                        document.querySelector('#rec2442651013 .tn-elem[data-elem-id="1705235414678"]'),
+                        24
+                    );
+                }
+
+                function layoutVenueBlock() {
+                    stackBelow(
+                        document.querySelector('#rec2442651083 .tn-elem[data-elem-id="1776866271348000003"]'),
+                        document.querySelector('#rec2442651083 .tn-elem[data-elem-id="1776866271348000004"]'),
+                        10
+                    );
                 }
 
                 function setLanguage(lang) {
@@ -5635,35 +5664,41 @@ t-form__inputsbox_vertical-form t-form__inputsbox_inrow
                     try { localStorage.setItem('site-lang', lang); } catch (e) {}
 
                     layoutQuoteBlock();
+                    layoutVenueBlock();
                 }
 
-                // Keep the verse position correct no matter *why* it needs to move:
-                // watch the title box for size changes (font swap, language
-                // switch, breakpoint resize) and also watch both elements' own
-                // "style" attribute, because Tilda's record engine reapplies its
-                // own stored top/position on these elements after our own script
-                // runs (on load and on resize) and would otherwise silently undo
-                // this fix a moment later.
+                // Keep these stacked text boxes correctly positioned no matter
+                // *why* they need to move: watch each heading box for size changes
+                // (font swap, language switch, breakpoint resize) and also watch
+                // both elements' own "style" attribute, because Tilda's record
+                // engine reapplies its own stored top/position on these elements
+                // after our script runs (on load and on resize) and would
+                // otherwise silently undo this fix a moment later.
                 (function () {
-                    var quoteTitleEl = document.querySelector('#rec2442651013 .tn-elem[data-elem-id="1705235414679"]');
-                    var quoteBodyEl = document.querySelector('#rec2442651013 .tn-elem[data-elem-id="1705235414678"]');
-                    if (!quoteTitleEl || !quoteBodyEl) { return; }
+                    watchStack(
+                        document.querySelector('#rec2442651013 .tn-elem[data-elem-id="1705235414679"]'),
+                        document.querySelector('#rec2442651013 .tn-elem[data-elem-id="1705235414678"]'),
+                        layoutQuoteBlock
+                    );
+                    watchStack(
+                        document.querySelector('#rec2442651083 .tn-elem[data-elem-id="1776866271348000003"]'),
+                        document.querySelector('#rec2442651083 .tn-elem[data-elem-id="1776866271348000004"]'),
+                        layoutVenueBlock
+                    );
 
-                    if (window.ResizeObserver) {
-                        new ResizeObserver(layoutQuoteBlock).observe(quoteTitleEl);
-                    }
-                    if (window.MutationObserver) {
-                        var mo = new MutationObserver(layoutQuoteBlock);
-                        mo.observe(quoteBodyEl, { attributes: true, attributeFilter: ['style'] });
-                        mo.observe(quoteTitleEl, { attributes: true, attributeFilter: ['style'] });
-                    }
                     var resizeTimer = null;
                     window.addEventListener('resize', function () {
                         clearTimeout(resizeTimer);
-                        resizeTimer = setTimeout(layoutQuoteBlock, 150);
+                        resizeTimer = setTimeout(function () {
+                            layoutQuoteBlock();
+                            layoutVenueBlock();
+                        }, 150);
                     });
                     if (document.fonts && document.fonts.ready) {
-                        document.fonts.ready.then(layoutQuoteBlock);
+                        document.fonts.ready.then(function () {
+                            layoutQuoteBlock();
+                            layoutVenueBlock();
+                        });
                     }
                 })();
 
