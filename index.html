@@ -1470,6 +1470,20 @@
                         background-repeat: no-repeat;
                     }
 
+                    /* The embedded scratch-card/countdown widget below is much taller
+                       than this record's nominal 350px artboard — force the artboard
+                       (and its filter/carrier siblings) to grow with it instead of
+                       potentially clipping the bottom of the widget ("أنتم مدعوون!"). */
+                    #rec2442651003 .t396__artboard {
+                        height: 480px !important;
+                        overflow-x: hidden !important;
+                        overflow-y: visible !important;
+                    }
+                    #rec2442651003 .t396__filter,
+                    #rec2442651003 .t396__carrier {
+                        height: 480px !important;
+                    }
+
                     @media screen and (max-width: 1199px) {
                         #rec2442651003 .t396__artboard,#rec2442651003 .t396__filter,#rec2442651003 .t396__carrier {
                             height:350px;
@@ -1609,6 +1623,27 @@
                         ;left: calc(50% - 600px + 354px);
                         ;width: 492px;
                         height: 114px;
+                    }
+
+                    /* This widget (scratch cards + venue line + "You're invited!") is an
+                       embedded HTML block whose real content is far taller than the 114px
+                       box Tilda originally gave it. That's been getting away with it only
+                       because overflow happened to stay visible in testing — on some
+                       phones the bottom line ("أنتم مدعوون!") ends up clipped by this box's
+                       own height. Force a generous height + visible overflow so nothing
+                       below the box's nominal 114px can ever be cut off. */
+                    #rec2442651003 .tn-elem[data-elem-id="1776856626015"] {
+                        height: 480px !important;
+                        overflow-x: hidden !important;
+                        overflow-y: visible !important;
+                    }
+                    #rec2442651003 .tn-elem[data-elem-id="1776856626015"] .tn-atom {
+                        height: auto !important;
+                        overflow-x: hidden !important;
+                        overflow-y: visible !important;
+                    }
+                    #rec2442651003 .tn-elem[data-elem-id="1776856626015"] iframe {
+                        height: 480px !important;
                     }
 
                     #rec2442651003 .tn-elem[data-elem-id="1776856626015"] .tn-atom {
